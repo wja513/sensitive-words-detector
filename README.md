@@ -1,5 +1,7 @@
 # sensitive-words-detector
 
+WIP...
+
 TODO:
 [ ] test
 [ ] examples

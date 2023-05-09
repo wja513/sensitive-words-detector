@@ -1,14 +1,13 @@
 package detector
 
 import (
-	"fmt"
 	"strings"
 	"unicode/utf8"
 )
 
 type Result struct {
-	//UcharStart int // 1-based
-	//UcharEnd   int
+	UcharStart int // 1-based
+	UcharEnd   int
 	ByteStart  int // zero-based
 	ByteEnd    int
 	HitWord    string
@@ -46,10 +45,14 @@ func (trie *Trie) Insert(s string) {
 func (trie *Trie) Contains(s string) bool {
 	parent := trie.Root
 	for _, r := range s {
-		if _, ok := parent.Children[r]; ok {
-			return true
+		if child, ok := parent.Children[r]; ok {
+			if child.End {
+				return true
+			}
+			parent = child
+		} else {
+			parent = trie.Root
 		}
-		parent = trie.Root
 	}
 
 	return false
@@ -109,118 +112,70 @@ func (trie *Trie) Filter(s string) string {
 	return s
 }
 
-func (trie *Trie) FindFirst(s string) (nth int, word string) {
-	var (
-		parent      = trie.Root
-		illegalWord = make([]rune, 0, 10)
-	)
-
-	for _, r := range s {
-		nth++
-		if child, ok := parent.Children[r]; ok {
-			illegalWord = append(illegalWord, r)
-			if child.End {
-				return nth, string(illegalWord)
-			}
-			parent = child
-		} else {
-			parent = trie.Root
-		}
-	}
-
-	return 0, ""
-}
-
-func (trie *Trie) FindAll2(text string) []string {
-	var (
-		parent = trie.Root
-		ret    = make([]string, 0)
-		start  = 0
-		pos    = 0
-		byts   = s2b(text)
-		l      = len(byts)
-	)
-
-	for pos < l {
-		r, size := utf8.DecodeRune(byts[pos:])
-		if child, ok := parent.Children[r]; ok {
-			if child.End {
-				ret = append(ret, string(byts[start:pos+size]))
-			}
-			parent = child
-			pos += size
-		} else {
-			parent = trie.Root
-			start += size
-			pos = start
-		}
-	}
-
-	return ret
-}
-
 func (trie *Trie) FindAll(text string) []string {
 	results := trie.Match(text)
-	fmt.Println(results)
+
+	// unique
 	m := make(map[string]struct{}, len(results))
-	s2 := make([]string, 0, len(results))
+	words := make([]string, 0, len(results))
 	for _, res := range results {
 		if _, ok := m[res.HitWord]; !ok {
 			m[res.HitWord] = struct{}{}
-			s2 = append(s2, res.HitWord)
+			words = append(words, res.HitWord)
 		}
 	}
 
-	return s2
+	return words
 }
 
 func (trie *Trie) Match(text string) (results []Result) {
 	var (
-		parent = trie.Root
-		b      = strings.Builder{}
-		start  = 0
-		pos    = 0
-		rstart = 0 // rune start pos
-		rend   = 0 // rune end pos
-		byts   = s2b(text)
-		l      = len(byts)
-		e      bool
+		parent               = trie.Root
+		sb                   = strings.Builder{}
+		start                = 0
+		pos                  = 0
+		cstart               = 0 // utf-8 char start pos
+		ncmatched            = 0 // matched char counter
+		byts                 = s2b(text)
+		l                    = len(byts)
+		firstMatchedRuneSize int
 	)
 
 	for pos < l {
 		r, size := utf8.DecodeRune(byts[pos:])
+
 		if child, ok := parent.Children[r]; ok {
-			b.WriteRune(r)
-			rend++
+			sb.Write(byts[pos : pos+size])
+			ncmatched++
+			if firstMatchedRuneSize == 0 {
+				firstMatchedRuneSize = size
+			}
 			if child.End {
 				result := Result{
-					//UcharStart: rstart + 1,
-					//UcharEnd:   rstart + rend,
-					ByteStart: start,
-					ByteEnd:   pos + size,
-					HitWord:   b.String(),
+					UcharStart: cstart + 1,
+					UcharEnd:   cstart + ncmatched,
+					ByteStart:  start,
+					ByteEnd:    pos + size,
+					HitWord:    sb.String(),
 				}
 				result.MatchedStr = string(byts[result.ByteStart:result.ByteEnd])
 				results = append(results, result)
-				e = true
 			}
 			pos += size
 			parent = child
 		} else {
 			parent = trie.Root
-			if e {
-				pos -= size
-				start = pos
-				e = false
+			if firstMatchedRuneSize > 0 {
+				start += firstMatchedRuneSize
+				firstMatchedRuneSize = 0
+				ncmatched = 0
 			} else {
 				start += size
-				pos = start
-				rstart++
 			}
-			b.Reset()
+			pos = start
+			cstart++
+			sb.Reset()
 		}
-
-		//fmt.Println(pos, rstart, string(r))
 	}
 
 	return results

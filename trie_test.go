@@ -23,7 +23,7 @@ func TestContains(t *testing.T) {
 		},
 	}
 	for _, detectCase := range detectCases {
-		assert.Equal(t, initTrie(detectCase.words).Contains(detectCase.text), detectCase.expects)
+		assert.Equal(t, detectCase.expects, initTrie(detectCase.words).Contains(detectCase.text))
 	}
 }
 
@@ -33,13 +33,13 @@ func TestFindAll(t *testing.T) {
 		words   []string
 		expects []string
 	}{
-		// basic ascii
+		// ascii
 		{
 			text:    "ahishers",
 			words:   []string{"he", "she", "hers", "his"},
 			expects: []string{"his", "she", "he", "hers"},
 		},
-		// basic utf-8
+		// utf-8
 		{
 			text:    "这篇文章真tmd傻X，脑残，tmd瞎逼带节奏~",
 			words:   []string{"脑残", "tmd", "傻X"},
@@ -47,7 +47,34 @@ func TestFindAll(t *testing.T) {
 		},
 	}
 	for _, detectCase := range detectCases {
-		assert.Equal(t, initTrie(detectCase.words).FindAll(detectCase.text), detectCase.expects)
+		assert.Equal(t, detectCase.expects, initTrie(detectCase.words).FindAll(detectCase.text))
+	}
+}
+
+func TestFilter(t *testing.T) {
+	var detectCases = []struct {
+		text    string
+		words   []string
+		replace string
+		expects string
+	}{
+		{
+			text:    "ahishers",
+			words:   []string{"he", "she", "hers", "his"},
+			replace: "*",
+			expects: "a*******",
+		},
+		{
+			text:    "这篇文章真tmd傻X，脑残，tmd瞎逼带节奏~",
+			words:   []string{"脑残", "tmd", "傻X"},
+			replace: "*",
+			expects: "这篇文章真*****，**，***瞎逼带节奏~",
+			//replace: "",
+			//expects: "这篇文章真，，瞎逼带节奏~",
+		},
+	}
+	for _, detectCase := range detectCases {
+		assert.Equal(t, detectCase.expects, initTrie(detectCase.words).Filter(detectCase.text, detectCase.replace))
 	}
 }
 
@@ -57,7 +84,7 @@ func TestMatch(t *testing.T) {
 		words   []string
 		expects []Result
 	}{
-		// basic ascii
+		// ascii
 		{
 			text:  "ahishers",
 			words: []string{"he", "she", "hers", "his"},
@@ -96,7 +123,7 @@ func TestMatch(t *testing.T) {
 				},
 			},
 		},
-		// basic utf-8
+		// utf-8
 		{
 			text:  "这篇文章真tmd傻X脑残tmd瞎逼带节奏~",
 			words: []string{"tmd", "脑残", "傻X"},
@@ -137,7 +164,7 @@ func TestMatch(t *testing.T) {
 		},
 	}
 	for _, detectCase := range detectCases {
-		assert.Equal(t, initTrie(detectCase.words).Match(detectCase.text), detectCase.expects)
+		assert.Equal(t, detectCase.expects, initTrie(detectCase.words).Match(detectCase.text))
 	}
 }
 

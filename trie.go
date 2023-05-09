@@ -6,9 +6,9 @@ import (
 )
 
 type Result struct {
-	UcharStart int // 1-based
+	UcharStart int // 1-based, left closed right closed
 	UcharEnd   int
-	ByteStart  int // zero-based
+	ByteStart  int // zero-based, left closed right open
 	ByteEnd    int
 	HitWord    string
 	MatchedStr string
@@ -58,58 +58,63 @@ func (trie *Trie) Contains(s string) bool {
 	return false
 }
 
-func (trie *Trie) Replace(s string, replace string) string {
+func (trie *Trie) Filter(text string, replace ...string) string {
+	results := trie.Match(text)
+	if len(results) == 0 {
+		return text
+	}
+
 	var (
-		sb      = strings.Builder{}
-		parent  = trie.Root
-		nrune   int
-		changed bool
-	)
-	for _, r := range s {
-		if child, ok := parent.Children[r]; ok {
-			nrune++
-			if child.End {
-				changed = true
-				sb.WriteString(strings.Repeat(replace, nrune))
-			}
-			parent = child
-		} else {
-			sb.WriteRune(r)
-			parent = trie.Root
-			nrune = 0
+		sb     = strings.Builder{}
+		byts   = s2b(text)
+		l      = len(text)
+		next   = 1
+		cur    = 0
+		i      = 0
+		merged = []Result{
+			{
+				UcharStart: results[cur].UcharStart,
+				UcharEnd:   results[cur].UcharEnd,
+				ByteStart:  results[cur].ByteStart,
+				ByteEnd:    results[cur].ByteEnd,
+			},
 		}
-	}
-
-	if changed {
-		return sb.String()
-	}
-
-	return s
-}
-
-func (trie *Trie) Filter(s string) string {
-	var (
-		sb      = strings.Builder{}
-		parent  = trie.Root
-		changed bool
+		rep = "*"
 	)
-	for _, r := range s {
-		if child, ok := parent.Children[r]; ok {
-			if child.End {
-				changed = true
-			}
-			parent = child
+	if len(replace) > 0 {
+		rep = replace[0]
+	}
+
+	for cur < len(results)-1 {
+		if results[cur].ByteEnd >= results[next].ByteStart && results[cur].ByteEnd <= results[next].ByteEnd {
+			merged[i].UcharEnd = results[next].UcharEnd
+			merged[i].ByteEnd = results[next].ByteEnd
+
 		} else {
-			sb.WriteRune(r)
-			parent = trie.Root
+			merged = append(merged, Result{
+				UcharStart: results[next].UcharStart,
+				UcharEnd:   results[next].UcharEnd,
+				ByteStart:  results[next].ByteStart,
+				ByteEnd:    results[next].ByteEnd,
+			})
+			i++
 		}
+		cur++
+		next++
 	}
 
-	if changed {
-		return sb.String()
+	//fmt.Println(merged)
+	var pos int
+	for _, res := range merged {
+		sb.Write(byts[pos:res.ByteStart])
+		sb.WriteString(strings.Repeat(rep, res.UcharEnd-res.UcharStart+1))
+		pos = res.ByteEnd
+	}
+	if pos < l {
+		sb.Write(byts[pos:])
 	}
 
-	return s
+	return sb.String()
 }
 
 func (trie *Trie) FindAll(text string) []string {

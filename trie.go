@@ -6,8 +6,8 @@ import (
 )
 
 type Result struct {
-	UcharStart int // 1-based, left closed right closed
-	UcharEnd   int
+	CharStart  int // 1-based, left closed right closed
+	CharEnd    int
 	ByteStart  int // zero-based, left closed right open
 	ByteEnd    int
 	HitWord    string
@@ -59,24 +59,21 @@ func (trie *Trie) Contains(s string) bool {
 }
 
 func (trie *Trie) Filter(text string, replace ...string) string {
-	results := trie.Match(text)
+	byts := s2b(text)
+	results := trie.match(byts)
 	if len(results) == 0 {
 		return text
 	}
 
 	var (
 		sb     = strings.Builder{}
-		byts   = s2b(text)
 		l      = len(text)
-		next   = 1
-		cur    = 0
-		i      = 0
 		merged = []Result{
 			{
-				UcharStart: results[cur].UcharStart,
-				UcharEnd:   results[cur].UcharEnd,
-				ByteStart:  results[cur].ByteStart,
-				ByteEnd:    results[cur].ByteEnd,
+				CharStart: results[0].CharStart,
+				CharEnd:   results[0].CharEnd,
+				ByteStart: results[0].ByteStart,
+				ByteEnd:   results[0].ByteEnd,
 			},
 		}
 		rep = "*"
@@ -85,29 +82,27 @@ func (trie *Trie) Filter(text string, replace ...string) string {
 		rep = replace[0]
 	}
 
-	for cur < len(results)-1 {
+	for cur, j := 0, 0; cur < len(results)-1; cur++ {
+		next := cur + 1
 		if results[cur].ByteEnd >= results[next].ByteStart && results[cur].ByteEnd <= results[next].ByteEnd {
-			merged[i].UcharEnd = results[next].UcharEnd
-			merged[i].ByteEnd = results[next].ByteEnd
-
+			merged[j].CharEnd = results[next].CharEnd
+			merged[j].ByteEnd = results[next].ByteEnd
 		} else {
 			merged = append(merged, Result{
-				UcharStart: results[next].UcharStart,
-				UcharEnd:   results[next].UcharEnd,
-				ByteStart:  results[next].ByteStart,
-				ByteEnd:    results[next].ByteEnd,
+				CharStart: results[next].CharStart,
+				CharEnd:   results[next].CharEnd,
+				ByteStart: results[next].ByteStart,
+				ByteEnd:   results[next].ByteEnd,
 			})
-			i++
+			j++
 		}
-		cur++
-		next++
 	}
 
 	//fmt.Println(merged)
 	var pos int
 	for _, res := range merged {
 		sb.Write(byts[pos:res.ByteStart])
-		sb.WriteString(strings.Repeat(rep, res.UcharEnd-res.UcharStart+1))
+		sb.WriteString(strings.Repeat(rep, res.CharEnd-res.CharStart+1))
 		pos = res.ByteEnd
 	}
 	if pos < l {
@@ -134,6 +129,10 @@ func (trie *Trie) FindAll(text string) []string {
 }
 
 func (trie *Trie) Match(text string) (results []Result) {
+	return trie.match(s2b(text))
+}
+
+func (trie *Trie) match(byts []byte) (results []Result) {
 	var (
 		parent               = trie.Root
 		sb                   = strings.Builder{}
@@ -141,7 +140,6 @@ func (trie *Trie) Match(text string) (results []Result) {
 		pos                  = 0
 		cstart               = 0 // utf-8 char start pos
 		ncmatched            = 0 // matched char counter
-		byts                 = s2b(text)
 		l                    = len(byts)
 		firstMatchedRuneSize int
 	)
@@ -157,11 +155,11 @@ func (trie *Trie) Match(text string) (results []Result) {
 			}
 			if child.End {
 				result := Result{
-					UcharStart: cstart + 1,
-					UcharEnd:   cstart + ncmatched,
-					ByteStart:  start,
-					ByteEnd:    pos + size,
-					HitWord:    sb.String(),
+					CharStart: cstart + 1,
+					CharEnd:   cstart + ncmatched,
+					ByteStart: start,
+					ByteEnd:   pos + size,
+					HitWord:   sb.String(),
 				}
 				result.MatchedStr = string(byts[result.ByteStart:result.ByteEnd])
 				results = append(results, result)

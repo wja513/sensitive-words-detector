@@ -59,8 +59,7 @@ func (trie *Trie) Contains(s string) bool {
 }
 
 func (trie *Trie) Filter(text string, replace ...string) string {
-	byts := s2b(text)
-	results := trie.match(byts)
+	results := trie.Match(text)
 	if len(results) == 0 {
 		return text
 	}
@@ -101,12 +100,12 @@ func (trie *Trie) Filter(text string, replace ...string) string {
 	//fmt.Println(merged)
 	var pos int
 	for _, res := range merged {
-		sb.Write(byts[pos:res.ByteStart])
+		sb.WriteString(text[pos:res.ByteStart])
 		sb.WriteString(strings.Repeat(rep, res.CharEnd-res.CharStart+1))
 		pos = res.ByteEnd
 	}
 	if pos < l {
-		sb.Write(byts[pos:])
+		sb.WriteString(text[pos:])
 	}
 
 	return sb.String()
@@ -129,10 +128,6 @@ func (trie *Trie) FindAll(text string) []string {
 }
 
 func (trie *Trie) Match(text string) (results []Result) {
-	return trie.match(s2b(text))
-}
-
-func (trie *Trie) match(byts []byte) (results []Result) {
 	var (
 		parent               = trie.Root
 		sb                   = strings.Builder{}
@@ -140,15 +135,15 @@ func (trie *Trie) match(byts []byte) (results []Result) {
 		pos                  = 0
 		cstart               = 0 // utf-8 char start pos
 		ncmatched            = 0 // matched char counter
-		l                    = len(byts)
+		l                    = len(text)
 		firstMatchedRuneSize int
 	)
 
 	for pos < l {
-		r, size := utf8.DecodeRune(byts[pos:])
+		r, size := utf8.DecodeRuneInString(text[pos:])
 
 		if child, ok := parent.Children[r]; ok {
-			sb.Write(byts[pos : pos+size])
+			sb.WriteString(text[pos : pos+size])
 			ncmatched++
 			if firstMatchedRuneSize == 0 {
 				firstMatchedRuneSize = size
@@ -161,7 +156,7 @@ func (trie *Trie) match(byts []byte) (results []Result) {
 					ByteEnd:   pos + size,
 					HitWord:   sb.String(),
 				}
-				result.MatchedStr = string(byts[result.ByteStart:result.ByteEnd])
+				result.MatchedStr = string(text[result.ByteStart:result.ByteEnd])
 				results = append(results, result)
 			}
 			pos += size

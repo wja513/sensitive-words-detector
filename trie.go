@@ -156,7 +156,7 @@ func (trie *Trie) Match(text string) (results []Result) {
 					ByteEnd:   pos + size,
 					HitWord:   sb.String(),
 				}
-				result.MatchedStr = string(text[result.ByteStart:result.ByteEnd])
+				result.MatchedStr = text[result.ByteStart:result.ByteEnd]
 				results = append(results, result)
 			}
 			pos += size

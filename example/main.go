@@ -8,10 +8,10 @@ import (
 
 // main execute `go run example/main.go` to run the demo
 func main() {
-	d := swd.New(swd.Options{
-		IgnoreCase: true,
-		Noises:     []rune(" ~!@#$%^&*()_-+=?<>.—，。/\\|《》？;:：'‘；“¥·"),
-	})
+	d := swd.New(
+		swd.WithIgnoreCase,
+		swd.WithNosies(" ~!@#$%^&*()_-+=?<>.—，。/\\|《》？;:：'‘；“¥·"),
+	)
 
 	pwd, _ := os.Getwd()
 	f, err := os.Open(pwd + "/example/sensitive_words_dict.txt")

@@ -11,11 +11,6 @@ type Detector struct {
 	trie *Trie
 }
 
-type Options struct {
-	IgnoreCase bool
-	Noises     []rune
-}
-
 func (d *Detector) Load(rd io.Reader) error {
 	buf := bufio.NewScanner(bufio.NewReader(rd))
 	for buf.Scan() {
@@ -60,18 +55,27 @@ func (d *Detector) Filter(text string, replace ...string) string {
 	return d.trie.Filter(text, replace...)
 }
 
-func New(opts Options) *Detector {
+func New(opts ...func(detector *Detector)) *Detector {
 	d := new(Detector)
-
 	trie := NewTrie()
-	trie.IgnoreCase = opts.IgnoreCase
-	if len(opts.Noises) > 0 {
-		for _, r := range opts.Noises {
-			trie.Noises[r] = struct{}{}
-		}
+	d.trie = trie
+	for _, opt := range opts {
+		opt(d)
 	}
 
-	d.trie = trie
-
 	return d
+}
+
+func WithIgnoreCase(d *Detector) {
+	d.trie.IgnoreCase = true
+}
+
+func WithNosies(noises string) func(*Detector) {
+	return func(d *Detector) {
+		if len(noises) > 0 {
+			for _, r := range noises {
+				d.trie.Noises[r] = struct{}{}
+			}
+		}
+	}
 }

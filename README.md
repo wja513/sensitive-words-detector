@@ -1,7 +1,7 @@
 # sensitive-words-detector
 
 ## Introduce
-A sensitive words tool。 一个敏感词工具，看https://github.com/importcjj/sensitive年久失修，就重造了一个轮子。
+A sensitive words tool。 一个敏感词工具，看 https://github.com/importcjj/sensitive 年久失修，就重造了一个轮子。
 
 ## Usage
 see example/main.go

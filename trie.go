@@ -2,6 +2,7 @@ package detector
 
 import (
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -20,16 +21,21 @@ type Node struct {
 }
 
 type Trie struct {
-	Root *Node
+	Root       *Node
+	IgnoreCase bool
+	Noises     map[rune]struct{}
 }
 
-func (trie *Trie) Insert(s string) {
-	if s == "" {
+func (trie *Trie) Insert(word string) {
+	if word == "" {
 		return
 	}
 
 	parent := trie.Root
-	for _, r := range s {
+	for _, r := range word {
+		if trie.IgnoreCase {
+			r = unicode.ToLower(r)
+		}
 		if child, ok := parent.Children[r]; ok {
 			parent = child
 		} else {
@@ -42,9 +48,12 @@ func (trie *Trie) Insert(s string) {
 	parent.End = true
 }
 
-func (trie *Trie) Contains(s string) bool {
+func (trie *Trie) Check(s string) bool {
 	parent := trie.Root
 	for _, r := range s {
+		if trie.IgnoreCase {
+			r = unicode.ToLower(r)
+		}
 		if child, ok := parent.Children[r]; ok {
 			if child.End {
 				return true
@@ -111,7 +120,7 @@ func (trie *Trie) Filter(text string, replace ...string) string {
 	return sb.String()
 }
 
-func (trie *Trie) FindAll(text string) []string {
+func (trie *Trie) Search(text string) []string {
 	results := trie.Match(text)
 
 	// unique
@@ -141,9 +150,12 @@ func (trie *Trie) Match(text string) (results []Result) {
 
 	for pos < l {
 		r, size := utf8.DecodeRuneInString(text[pos:])
+		if trie.IgnoreCase {
+			r = unicode.ToLower(r)
+		}
 
 		if child, ok := parent.Children[r]; ok {
-			sb.WriteString(text[pos : pos+size])
+			sb.WriteRune(r)
 			ncmatched++
 			if firstMatchedRuneSize == 0 {
 				firstMatchedRuneSize = size
@@ -162,6 +174,14 @@ func (trie *Trie) Match(text string) (results []Result) {
 			pos += size
 			parent = child
 		} else {
+			if firstMatchedRuneSize > 0 {
+				if _, ok := trie.Noises[r]; ok {
+					pos += size
+					ncmatched++
+					continue
+				}
+			}
+
 			parent = trie.Root
 			if firstMatchedRuneSize > 0 {
 				start += firstMatchedRuneSize

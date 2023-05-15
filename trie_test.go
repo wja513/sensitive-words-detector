@@ -5,11 +5,13 @@ import (
 	"testing"
 )
 
-func TestContains(t *testing.T) {
+func TestCheck(t *testing.T) {
 	var detectCases = []struct {
-		text    string
-		words   []string
-		expects bool
+		text       string
+		words      []string
+		ignoreCase bool
+		nosies     []rune
+		expects    bool
 	}{
 		{
 			text:    "看，他真像个傻X^_^",
@@ -23,15 +25,17 @@ func TestContains(t *testing.T) {
 		},
 	}
 	for _, detectCase := range detectCases {
-		assert.Equal(t, detectCase.expects, initTrie(detectCase.words).Contains(detectCase.text))
+		assert.Equal(t, detectCase.expects, initTrie(detectCase.words, detectCase.ignoreCase, detectCase.nosies).Check(detectCase.text))
 	}
 }
 
-func TestFindAll(t *testing.T) {
+func TestSearch(t *testing.T) {
 	var detectCases = []struct {
-		text    string
-		words   []string
-		expects []string
+		text       string
+		words      []string
+		ignoreCase bool
+		nosies     []rune
+		expects    []string
 	}{
 		// ascii
 		{
@@ -41,22 +45,31 @@ func TestFindAll(t *testing.T) {
 		},
 		// utf-8
 		{
-			text:    "这篇文章真tmd傻X，脑残，tmd瞎逼带节奏~",
-			words:   []string{"脑残", "tmd", "傻X"},
-			expects: []string{"tmd", "傻X", "脑残"},
+			text:       "这篇文章真tmd傻X，脑残，tmd瞎逼带节奏~",
+			words:      []string{"脑残", "tmd", "傻x"},
+			ignoreCase: true,
+			expects:    []string{"tmd", "傻x", "脑残"},
+		},
+		{
+			text:    "#@这$是#%一^&段包^&**含敏感词*#3和敏&*感#词1的文本@#",
+			words:   []string{"敏感词1", "敏感词2", "敏感词3"},
+			nosies:  []rune("#@$%^*&"),
+			expects: []string{"敏感词3", "敏感词1"},
 		},
 	}
 	for _, detectCase := range detectCases {
-		assert.Equal(t, detectCase.expects, initTrie(detectCase.words).FindAll(detectCase.text))
+		assert.Equal(t, detectCase.expects, initTrie(detectCase.words, detectCase.ignoreCase, detectCase.nosies).Search(detectCase.text))
 	}
 }
 
 func TestFilter(t *testing.T) {
 	var detectCases = []struct {
-		text    string
-		words   []string
-		replace string
-		expects string
+		text       string
+		words      []string
+		replace    string
+		ignoreCase bool
+		nosies     []rune
+		expects    string
 	}{
 		{
 			text:    "ahishers",
@@ -69,20 +82,27 @@ func TestFilter(t *testing.T) {
 			words:   []string{"脑残", "tmd", "傻X"},
 			replace: "*",
 			expects: "这篇文章真*****，**，***瞎逼带节奏~",
-			//replace: "",
-			//expects: "这篇文章真，，瞎逼带节奏~",
+		},
+		{
+			text:    "#@这$是#%一^&段包^&**含敏感词*#3和敏&*感#词1的文本@#",
+			words:   []string{"敏感词1", "敏感词2", "敏感词3"},
+			nosies:  []rune("#@$%^*&"),
+			replace: "*",
+			expects: "#@这$是#%一^&段包^&**含******和*******的文本@#",
 		},
 	}
 	for _, detectCase := range detectCases {
-		assert.Equal(t, detectCase.expects, initTrie(detectCase.words).Filter(detectCase.text, detectCase.replace))
+		assert.Equal(t, detectCase.expects, initTrie(detectCase.words, detectCase.ignoreCase, detectCase.nosies).Filter(detectCase.text, detectCase.replace))
 	}
 }
 
 func TestMatch(t *testing.T) {
 	var detectCases = []struct {
-		text    string
-		words   []string
-		expects []Result
+		text       string
+		words      []string
+		ignoreCase bool
+		nosies     []rune
+		expects    []Result
 	}{
 		// ascii
 		{
@@ -162,14 +182,44 @@ func TestMatch(t *testing.T) {
 				},
 			},
 		},
+		{
+			text:       "#@这$是#%一^&段包^&**含敏感词*#b和敏&*感#词A的文本@#",
+			words:      []string{"敏感词a", "敏感词2", "敏感词B"},
+			ignoreCase: true,
+			nosies:     []rune("#@$%^*&"),
+			expects: []Result{
+				{
+					CharStart:  18,
+					CharEnd:    23,
+					ByteStart:  29,
+					ByteEnd:    41,
+					HitWord:    "敏感词b",
+					MatchedStr: "敏感词*#b",
+				},
+				{
+					CharStart:  25,
+					CharEnd:    31,
+					ByteStart:  44,
+					ByteEnd:    57,
+					HitWord:    "敏感词a",
+					MatchedStr: "敏&*感#词A",
+				},
+			},
+		},
 	}
 	for _, detectCase := range detectCases {
-		assert.Equal(t, detectCase.expects, initTrie(detectCase.words).Match(detectCase.text))
+		assert.Equal(t, detectCase.expects, initTrie(detectCase.words, detectCase.ignoreCase, detectCase.nosies).Match(detectCase.text))
 	}
 }
 
-func initTrie(words []string) (trie *Trie) {
+func initTrie(words []string, ignoreCase bool, noises []rune) (trie *Trie) {
 	trie = New()
+	trie.IgnoreCase = ignoreCase
+	trie.Noises = make(map[rune]struct{}, 0)
+	for _, r := range noises {
+		trie.Noises[r] = struct{}{}
+	}
+
 	for _, word := range words {
 		trie.Insert(word)
 	}

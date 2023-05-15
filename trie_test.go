@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestCheck(t *testing.T) {
+func TestDetect(t *testing.T) {
 	var detectCases = []struct {
 		text       string
 		words      []string
@@ -213,11 +213,12 @@ func TestMatch(t *testing.T) {
 }
 
 func initTrie(words []string, ignoreCase bool, noises []rune) (trie *Trie) {
-	trie = New()
+	trie = NewTrie()
 	trie.IgnoreCase = ignoreCase
-	trie.Noises = make(map[rune]struct{}, 0)
-	for _, r := range noises {
-		trie.Noises[r] = struct{}{}
+	if len(noises) > 0 {
+		for _, r := range noises {
+			trie.Noises[r] = struct{}{}
+		}
 	}
 
 	for _, word := range words {

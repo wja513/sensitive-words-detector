@@ -48,9 +48,9 @@ func (trie *Trie) Insert(word string) {
 	parent.End = true
 }
 
-func (trie *Trie) Check(s string) bool {
+func (trie *Trie) Check(text string) bool {
 	parent := trie.Root
-	for _, r := range s {
+	for _, r := range text {
 		if trie.IgnoreCase {
 			r = unicode.ToLower(r)
 		}
@@ -205,8 +205,9 @@ func newNode() *Node {
 	return node
 }
 
-func New() *Trie {
+func NewTrie() *Trie {
 	trie := new(Trie)
 	trie.Root = newNode()
+	trie.Noises = make(map[rune]struct{})
 	return trie
 }

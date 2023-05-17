@@ -252,12 +252,13 @@ func TestDelete(t *testing.T) {
 	for _, detectCase := range detectCases {
 		trie := initTrie(detectCase.words, detectCase.ignoreCase, detectCase.nosies)
 
-		expects := []string{"he", "she", "hers", "his", "敏感词a", "敏感词2", "敏感词B"}
+		expects := []string{"she", "hers", "his", "敏感词a", "敏感词2", "敏感词B"}
 		sort.Strings(expects)
 
-		trie.Delete("h")
+		trie.Delete("he")
 		trie.Delete("傻B")
 		trie.Delete("傻X")
+		trie.Delete("敏")
 		actual := trie.GetAllWords()
 		sort.Strings(actual)
 

@@ -213,7 +213,7 @@ func TestMatch(t *testing.T) {
 	}
 }
 
-func TestTraverse(t *testing.T) {
+func TestGetAllWords(t *testing.T) {
 	var detectCases = []struct {
 		text       string
 		words      []string
@@ -229,20 +229,39 @@ func TestTraverse(t *testing.T) {
 	for _, detectCase := range detectCases {
 		trie := initTrie(detectCase.words, detectCase.ignoreCase, detectCase.nosies)
 
-		words := trie.GetAllWords()
-		sort.Strings(words)
-		t.Log(words)
 		sort.Strings(detectCase.expects)
-		actual := trie.Traverse()
+		actual := trie.GetAllWords()
 		sort.Strings(actual)
+
 		assert.Equal(t, detectCase.expects, actual)
+	}
+}
+
+func TestDelete(t *testing.T) {
+	var detectCases = []struct {
+		text       string
+		words      []string
+		ignoreCase bool
+		nosies     []rune
+		expects    []string
+	}{
+		{
+			words: []string{"he", "she", "hers", "his", "傻B", "傻X", "敏感词a", "敏感词2", "敏感词B"},
+		},
+	}
+	for _, detectCase := range detectCases {
+		trie := initTrie(detectCase.words, detectCase.ignoreCase, detectCase.nosies)
+
+		expects := []string{"he", "she", "hers", "his", "敏感词a", "敏感词2", "敏感词B"}
+		sort.Strings(expects)
 
 		trie.Delete("h")
 		trie.Delete("傻B")
 		trie.Delete("傻X")
-		words = trie.GetAllWords()
-		sort.Strings(words)
-		t.Log(words)
+		actual := trie.GetAllWords()
+		sort.Strings(actual)
+
+		assert.Equal(t, expects, actual)
 	}
 }
 

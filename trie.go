@@ -15,60 +15,60 @@ type Result struct {
 	MatchedStr string
 }
 
-type Node struct {
+type TrieNode struct {
 	End      bool
-	Children map[rune]*Node
+	Children map[rune]*TrieNode
 }
 
 type Trie struct {
-	Root       *Node
+	Root       *TrieNode
 	IgnoreCase bool
 	Noises     map[rune]struct{}
 }
 
-func (trie *Trie) Insert(word string) {
+func (t *Trie) Insert(word string) {
 	if word == "" {
 		return
 	}
 
-	parent := trie.Root
+	node := t.Root
 	for _, r := range word {
-		if trie.IgnoreCase {
+		if t.IgnoreCase {
 			r = unicode.ToLower(r)
 		}
-		if child, ok := parent.Children[r]; ok {
-			parent = child
+		if child, ok := node.Children[r]; ok {
+			node = child
 		} else {
 			child := newNode()
-			parent.Children[r] = child
-			parent = child
+			node.Children[r] = child
+			node = child
 		}
 	}
 
-	parent.End = true
+	node.End = true
 }
 
-func (trie *Trie) Check(text string) bool {
-	parent := trie.Root
+func (t *Trie) Check(text string) bool {
+	node := t.Root
 	for _, r := range text {
-		if trie.IgnoreCase {
+		if t.IgnoreCase {
 			r = unicode.ToLower(r)
 		}
-		if child, ok := parent.Children[r]; ok {
+		if child, ok := node.Children[r]; ok {
 			if child.End {
 				return true
 			}
-			parent = child
+			node = child
 		} else {
-			parent = trie.Root
+			node = t.Root
 		}
 	}
 
 	return false
 }
 
-func (trie *Trie) Filter(text string, replace ...string) string {
-	results := trie.Match(text)
+func (t *Trie) Filter(text string, replace ...string) string {
+	results := t.Match(text)
 	if len(results) == 0 {
 		return text
 	}
@@ -120,8 +120,8 @@ func (trie *Trie) Filter(text string, replace ...string) string {
 	return sb.String()
 }
 
-func (trie *Trie) Search(text string) []string {
-	results := trie.Match(text)
+func (t *Trie) Search(text string) []string {
+	results := t.Match(text)
 
 	// unique
 	m := make(map[string]struct{}, len(results))
@@ -136,9 +136,9 @@ func (trie *Trie) Search(text string) []string {
 	return words
 }
 
-func (trie *Trie) Match(text string) (results []Result) {
+func (t *Trie) Match(text string) (results []Result) {
 	var (
-		parent               = trie.Root
+		node                 = t.Root
 		sb                   = strings.Builder{}
 		start                = 0
 		pos                  = 0
@@ -150,11 +150,11 @@ func (trie *Trie) Match(text string) (results []Result) {
 
 	for pos < l {
 		r, size := utf8.DecodeRuneInString(text[pos:])
-		if trie.IgnoreCase {
+		if t.IgnoreCase {
 			r = unicode.ToLower(r)
 		}
 
-		if child, ok := parent.Children[r]; ok {
+		if child, ok := node.Children[r]; ok {
 			sb.WriteRune(r)
 			ncmatched++
 			if firstMatchedRuneSize == 0 {
@@ -172,17 +172,17 @@ func (trie *Trie) Match(text string) (results []Result) {
 				results = append(results, result)
 			}
 			pos += size
-			parent = child
+			node = child
 		} else {
 			if firstMatchedRuneSize > 0 {
-				if _, ok := trie.Noises[r]; ok {
+				if _, ok := t.Noises[r]; ok {
 					pos += size
 					ncmatched++
 					continue
 				}
 			}
 
-			parent = trie.Root
+			node = t.Root
 			if firstMatchedRuneSize > 0 {
 				start += firstMatchedRuneSize
 				firstMatchedRuneSize = 0
@@ -199,9 +199,59 @@ func (trie *Trie) Match(text string) (results []Result) {
 	return results
 }
 
-func newNode() *Node {
-	node := new(Node)
-	node.Children = make(map[rune]*Node)
+func (t *Trie) GetAllWords() (words []string) {
+	stack := []*TrieNode{t.Root}
+	prefixStack := []string{""}
+
+	for len(stack) > 0 {
+		node := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		prefix := prefixStack[len(prefixStack)-1]
+		prefixStack = prefixStack[:len(prefixStack)-1]
+
+		if node.End {
+			words = append(words, prefix)
+		}
+
+		for r, child := range node.Children {
+			stack = append(stack, child)
+			prefixStack = append(prefixStack, prefix+string(r))
+		}
+	}
+
+	return
+}
+
+func (t *Trie) Delete(word string) {
+	var (
+		node  = t.Root
+		stack []*TrieNode
+	)
+
+	for _, r := range word {
+		if _, ok := node.Children[r]; !ok {
+			return
+		}
+		stack = append(stack, node)
+		node = node.Children[r]
+	}
+	node.End = false
+	if len(node.Children) == 0 {
+		for len(stack) > 0 {
+			node = stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			delete(node.Children, []rune(word)[len(stack)])
+			if len(node.Children) > 0 || node.End {
+				break
+			}
+		}
+	}
+}
+
+func newNode() *TrieNode {
+	node := new(TrieNode)
+	node.Children = make(map[rune]*TrieNode)
 	return node
 }
 

@@ -2,6 +2,7 @@ package detector
 
 import (
 	"github.com/stretchr/testify/assert"
+	"sort"
 	"testing"
 )
 
@@ -209,6 +210,39 @@ func TestMatch(t *testing.T) {
 	}
 	for _, detectCase := range detectCases {
 		assert.Equal(t, detectCase.expects, initTrie(detectCase.words, detectCase.ignoreCase, detectCase.nosies).Match(detectCase.text))
+	}
+}
+
+func TestTraverse(t *testing.T) {
+	var detectCases = []struct {
+		text       string
+		words      []string
+		ignoreCase bool
+		nosies     []rune
+		expects    []string
+	}{
+		{
+			words:   []string{"he", "she", "hers", "his", "傻B", "傻X", "敏感词a", "敏感词2", "敏感词B"},
+			expects: []string{"he", "she", "hers", "his", "傻B", "傻X", "敏感词a", "敏感词2", "敏感词B"},
+		},
+	}
+	for _, detectCase := range detectCases {
+		trie := initTrie(detectCase.words, detectCase.ignoreCase, detectCase.nosies)
+
+		words := trie.GetAllWords()
+		sort.Strings(words)
+		t.Log(words)
+		sort.Strings(detectCase.expects)
+		actual := trie.Traverse()
+		sort.Strings(actual)
+		assert.Equal(t, detectCase.expects, actual)
+
+		trie.Delete("h")
+		trie.Delete("傻B")
+		trie.Delete("傻X")
+		words = trie.GetAllWords()
+		sort.Strings(words)
+		t.Log(words)
 	}
 }
 

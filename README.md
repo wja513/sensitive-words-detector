@@ -7,10 +7,10 @@ A sensitive words tool。 一个敏感词工具，看 https://github.com/importc
 see example/main.go
 ```go
 func main() {
-	d := swd.New(
-	    swd.WithIgnoreCase,
-	    swd.WithNosies(" ~!@#$%^&*()_-+=?<>.—，。/\\|《》？;:：'‘；“¥·"),
-	)
+    d := swd.NewWithOptions(&swd.Options{
+        IgnoreCase: true,
+        Noises:     []rune(" ~!@#$%^&*()_-+=?<>.—，。/\\|《》？;:：'‘；“¥·"),
+    })
 
 	pwd, _ := os.Getwd()
 	f, err := os.Open(pwd + "/example/sensitive_words_dict.txt")
